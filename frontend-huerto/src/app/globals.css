@@ -1,0 +1,243 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f2f5ee;
+  --foreground: #203126;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+.dashboard-shell {
+  background:
+    radial-gradient(circle at 90% 0%, #dcebd5 0, transparent 30%),
+    var(--background);
+  min-height: 100vh;
+  padding: 48px clamp(20px, 5vw, 76px) 64px;
+}
+.dashboard-header,
+.panel-heading {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+.dashboard-header {
+  margin: 0 auto 36px;
+  max-width: 1240px;
+}
+.eyebrow {
+  color: #347554;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+h1,
+h2 {
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+h1 {
+  color: #1e3526;
+  font-size: clamp(2.2rem, 5vw, 4.4rem);
+  line-height: 0.98;
+}
+h2 {
+  font-size: 1.25rem;
+}
+.subtitle {
+  color: #6b796d;
+  margin: 12px 0 0;
+}
+.live-status {
+  align-items: center;
+  color: #4c6251;
+  display: flex;
+  font-size: 0.8rem;
+  gap: 8px;
+  margin-top: 8px;
+}
+.live-status span {
+  background: #55a66f;
+  border-radius: 50%;
+  box-shadow: 0 0 0 5px #d6e8d7;
+  height: 8px;
+  width: 8px;
+}
+.metric-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 auto 22px;
+  max-width: 1240px;
+}
+.metric-card {
+  background: #fff;
+  border: 1px solid #e0e8df;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px #293d2d0b;
+  padding: 24px;
+}
+.metric-card span {
+  color: #708074;
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+.metric-card strong {
+  color: #23382a;
+  display: block;
+  font-size: clamp(1.9rem, 3vw, 2.65rem);
+  letter-spacing: -0.06em;
+  margin: 16px 0 8px;
+}
+.metric-card small {
+  color: #88958a;
+  font-size: 0.76rem;
+}
+.metric-primary {
+  background: #2f7d59;
+  border-color: #2f7d59;
+  color: #fff;
+}
+.metric-primary span,
+.metric-primary strong,
+.metric-primary small {
+  color: #fff;
+}
+.metric-primary small {
+  opacity: 0.75;
+}
+.panel {
+  background: #fff;
+  border: 1px solid #e0e8df;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px #293d2d0b;
+  margin: 0 auto 22px;
+  max-width: 1240px;
+  padding: 26px;
+}
+.panel-heading {
+  align-items: center;
+  margin-bottom: 22px;
+}
+.legend-note {
+  color: #748177;
+  font-size: 0.78rem;
+}
+.legend-note i {
+  background: #2f7d59;
+  border-radius: 50%;
+  display: inline-block;
+  height: 8px;
+  margin: 0 5px 0 12px;
+  width: 8px;
+}
+.legend-note i:first-child {
+  margin-left: 0;
+}
+.legend-note .voltaje-dot {
+  background: #e38b42;
+}
+.chart-wrap {
+  height: 340px;
+  width: 100%;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+  min-width: 620px;
+  width: 100%;
+}
+th {
+  color: #87938a;
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  padding: 0 14px 12px;
+  text-align: left;
+  text-transform: uppercase;
+}
+td {
+  border-top: 1px solid #edf1ec;
+  color: #526257;
+  font-size: 0.86rem;
+  padding: 15px 14px;
+}
+.humidity-value {
+  color: #2f7d59;
+  font-weight: 750;
+}
+.record-count {
+  background: #edf5ec;
+  border-radius: 999px;
+  color: #347554;
+  font-size: 0.75rem;
+  padding: 7px 11px;
+}
+.empty-state {
+  align-items: center;
+  color: #87938a;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+}
+.error-message {
+  background: #fff0ed;
+  border: 1px solid #efb0a6;
+  border-radius: 8px;
+  color: #9e3e31;
+  margin: 0 auto 22px;
+  max-width: 1240px;
+  padding: 14px 18px;
+}
+@media (max-width: 700px) {
+  .dashboard-shell {
+    padding: 30px 16px 48px;
+  }
+  .dashboard-header {
+    display: block;
+  }
+  .live-status {
+    margin-top: 24px;
+  }
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+  .metric-card {
+    padding: 20px;
+  }
+  .panel {
+    padding: 20px 16px;
+  }
+  .panel-heading {
+    align-items: flex-start;
+    display: block;
+  }
+  .legend-note,
+  .record-count {
+    display: inline-block;
+    margin-top: 16px;
+  }
+  .chart-wrap {
+    height: 280px;
+  }
+}
