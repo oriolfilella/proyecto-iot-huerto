@@ -1,5 +1,3 @@
-#include "wifi.h"
-
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_log.h"
@@ -7,40 +5,44 @@
 #include "esp_wifi.h"
 
 #include "mqtt.h"
-#include "app_config.h"
+#include "wifi.h"
 
-static const char *TAG = "HUERTO_WIFI";
+static const char *TAG = "HUERTO_NODE";
+
+#define WIFI_SSID "Wokwi-GUEST"
+#define WIFI_PASS ""
 
 static void wifi_event_handler(
     void *arg,
     esp_event_base_t event_base,
     int32_t event_id,
-    void *event_data
-)
+    void *event_data)
 {
-    if (event_base == WIFI_EVENT &&
-        event_id == WIFI_EVENT_STA_START) {
-
-        ESP_LOGI(TAG, "[WIFI] WiFi iniciado. Conectando al AP...");
-        esp_wifi_connect();
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        ESP_LOGI(TAG, "[WIFI] WiFi iniciado. Conectando...");
+        esp_err_t ret = esp_wifi_connect();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "[WIFI] Error conectando: %s", esp_err_to_name(ret));
+        }
     }
-
-    else if (event_base == WIFI_EVENT &&
-             event_id == WIFI_EVENT_STA_DISCONNECTED) {
-
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         ESP_LOGW(TAG, "[WIFI] Desconectado. Reintentando...");
-        esp_wifi_connect();
+        mqtt_conectado = false;
+
+        esp_err_t ret = esp_wifi_connect();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "[WIFI] Error al reconectar: %s", esp_err_to_name(ret));
+        }
     }
-
-    else if (event_base == IP_EVENT &&
-             event_id == IP_EVENT_STA_GOT_IP) {
-
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
 
-        ESP_LOGI(TAG, "[WIFI] Conectado. IP: " IPSTR,
-                 IP2STR(&event->ip_info.ip));
+        ESP_LOGI(TAG, "[WIFI] Conectado. IP: " IPSTR, IP2STR(&event->ip_info.ip));
 
-        mqtt_start();
+        esp_err_t ret = mqtt_start();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "[WIFI] No se pudo iniciar MQTT: %s", esp_err_to_name(ret));
+        }
     }
 }
 

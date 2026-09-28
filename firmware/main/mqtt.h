@@ -3,8 +3,13 @@
 
 #include <stdbool.h>
 
-void mqtt_start(void);
-bool mqtt_is_connected(void);
-int mqtt_publish_sensor_data(int humedad_pct, int voltaje_mv);
+#include "esp_err.h"
 
-#endif
+#include "telemetria.h"
+
+extern volatile bool mqtt_conectado;
+
+esp_err_t mqtt_start(void);
+esp_err_t mqtt_publicar_telemetria(const telemetria_nodo_t *datos);
+
+#endif // MQTT_H

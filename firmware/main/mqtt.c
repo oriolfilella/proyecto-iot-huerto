@@ -1,27 +1,27 @@
-#include "mqtt.h"
-
-#include <stdbool.h>
-#include <stdio.h>
+#include <stdlib.h>
 
 #include "esp_err.h"
-#include "esp_event.h"
 #include "esp_log.h"
+#include "esp_event.h"
 
 #include "mqtt_client.h"
+#include "cJSON.h"
 
-#include "app_config.h"
+#include "mqtt.h"
 
-static const char *TAG = "HUERTO_MQTT";
+static const char *TAG = "HUERTO_NODE";
+
+#define MQTT_BROKER_URI "mqtt://broker.hivemq.com"
+#define MQTT_TOPIC "huerto/lleida/frutales/nispero_1/telemetria"
 
 static esp_mqtt_client_handle_t mqtt_client = NULL;
-static volatile bool mqtt_conectado = false;
+volatile bool mqtt_conectado = false;
 
 static void mqtt_event_handler(
     void *handler_args,
     esp_event_base_t base,
     int32_t event_id,
-    void *event_data
-)
+    void *event_data)
 {
     switch ((esp_mqtt_event_id_t)event_id) {
         case MQTT_EVENT_CONNECTED:
@@ -39,7 +39,7 @@ static void mqtt_event_handler(
             break;
 
         case MQTT_EVENT_ERROR:
-            ESP_LOGE(TAG, "[MQTT] Error en la conexión MQTT.");
+            ESP_LOGE(TAG, "[MQTT] Error MQTT.");
             break;
 
         default:
@@ -47,11 +47,11 @@ static void mqtt_event_handler(
     }
 }
 
-void mqtt_start(void)
+esp_err_t mqtt_start(void)
 {
     if (mqtt_client != NULL) {
-        ESP_LOGI(TAG, "[MQTT] El cliente ya está creado.");
-        return;
+        ESP_LOGI(TAG, "[MQTT] Cliente ya inicializado.");
+        return ESP_OK;
     }
 
     ESP_LOGI(TAG, "[MQTT] Iniciando cliente MQTT...");
@@ -61,10 +61,9 @@ void mqtt_start(void)
     };
 
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
-
     if (mqtt_client == NULL) {
-        ESP_LOGE(TAG, "[MQTT] No se pudo crear el cliente MQTT.");
-        return;
+        ESP_LOGE(TAG, "[MQTT] No se pudo crear el cliente.");
+        return ESP_FAIL;
     }
 
     esp_err_t ret = esp_mqtt_client_register_event(
@@ -75,65 +74,94 @@ void mqtt_start(void)
     );
 
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "[MQTT] Error registrando event handler: %s",
-                 esp_err_to_name(ret));
+        ESP_LOGE(TAG, "[MQTT] Error registrando handler: %s", esp_err_to_name(ret));
         mqtt_client = NULL;
-        return;
+        return ret;
     }
 
     ret = esp_mqtt_client_start(mqtt_client);
-
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "[MQTT] Error iniciando MQTT: %s",
-                 esp_err_to_name(ret));
+        ESP_LOGE(TAG, "[MQTT] Error iniciando MQTT: %s", esp_err_to_name(ret));
         mqtt_client = NULL;
-        return;
+        return ret;
     }
+
+    return ESP_OK;
 }
 
-bool mqtt_is_connected(void)
+esp_err_t mqtt_publicar_telemetria(const telemetria_nodo_t *datos)
 {
-    return mqtt_conectado && mqtt_client != NULL;
-}
+    if (datos == NULL) {
+        ESP_LOGE(TAG, "[MQTT] Telemetría NULL.");
+        return ESP_ERR_INVALID_ARG;
+    }
 
-int mqtt_publish_sensor_data(int humedad_pct, int voltaje_mv)
-{
-    if (!mqtt_is_connected()) {
+    if (!mqtt_conectado || mqtt_client == NULL) {
         ESP_LOGW(TAG, "[MQTT] No conectado. Datos no enviados.");
-        return -1;
+        return ESP_ERR_INVALID_STATE;
     }
 
-    char payload_json[100];
-    int ret_snprintf = snprintf(
-        payload_json,
-        sizeof(payload_json),
-        "{\"humedad_pct\": %d, \"voltaje_mv\": %d}",
-        humedad_pct,
-        voltaje_mv
-    );
-
-    if (ret_snprintf < 0 || ret_snprintf >= (int)sizeof(payload_json)) {
-        ESP_LOGE(TAG, "[MQTT] Error construyendo JSON.");
-        return -1;
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        ESP_LOGE(TAG, "[MQTT] No se pudo crear objeto JSON.");
+        return ESP_ERR_NO_MEM;
     }
 
-    int msg_id = esp_mqtt_client_publish(
-        mqtt_client,
-        MQTT_TOPIC,
-        payload_json,
-        0,
-        1,
-        0
-    );
+    if (datos->suelo_ok) {
+        if (cJSON_AddNumberToObject(root, "humedad_pct", datos->humedad_suelo_pct) == NULL) {
+            ESP_LOGE(TAG, "[MQTT] Error añadiendo humedad.");
+            cJSON_Delete(root);
+            return ESP_ERR_NO_MEM;
+        }
 
-    if (msg_id >= 0) {
-        ESP_LOGI(TAG, "[MQTT] Publicado -> %s: %s",
-                 MQTT_TOPIC,
-                 payload_json);
+        if (cJSON_AddNumberToObject(root, "voltaje_mv", datos->humedad_suelo_mv) == NULL) {
+            ESP_LOGE(TAG, "[MQTT] Error añadiendo voltaje.");
+            cJSON_Delete(root);
+            return ESP_ERR_NO_MEM;
+        }
     }
-    else {
+
+    if (datos->temperatura_ok) {
+        if (cJSON_AddNumberToObject(root, "temperatura_c", datos->temperatura_c) == NULL) {
+            ESP_LOGE(TAG, "[MQTT] Error añadiendo temperatura.");
+            cJSON_Delete(root);
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
+    if (datos->luz_ok) {
+        if (cJSON_AddNumberToObject(root, "luz_raw", datos->luz_raw) == NULL) {
+            ESP_LOGE(TAG, "[MQTT] Error añadiendo luz.");
+            cJSON_Delete(root);
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
+    if (cJSON_GetArraySize(root) == 0) {
+        ESP_LOGW(TAG, "[MQTT] No hay datos válidos para publicar.");
+        cJSON_Delete(root);
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    char *json_string = cJSON_PrintUnformatted(root);
+    if (json_string == NULL) {
+        ESP_LOGE(TAG, "[MQTT] Error creando string JSON.");
+        cJSON_Delete(root);
+        return ESP_ERR_NO_MEM;
+    }
+
+    int msg_id = esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC, json_string, 0, 1, 0);
+    if (msg_id < 0) {
         ESP_LOGE(TAG, "[MQTT] Error publicando mensaje.");
+        free(json_string);
+        cJSON_Delete(root);
+        return ESP_FAIL;
     }
 
-    return msg_id;
+    ESP_LOGI(TAG, "[MQTT] Publicado -> %s", json_string);
+
+    free(json_string);
+    cJSON_Delete(root);
+
+    return ESP_OK;
 }
